@@ -1,6 +1,6 @@
 # Changelog
 
-## [Não versionado]
+## [1.0.0] — 2026-11-07
 
 ### Adicionado
 - feat: bot Garimpo no emulador — acha posts novos pro chat do Auto Follow: vai curtidor por curtidor da turma, olha a grade de cada um e o Gemini marca as fotos de roupa numa chamada só por perfil, confere curtidas e se a lista de curtidas ainda rende pra frota e manda no grupo
