@@ -1,11 +1,12 @@
 # Garimpo (emulador)
 
 Acha posts novos pro chat do Auto Follow sozinho e manda no grupo, tocando no app real do Instagram
-(uiautomator2) no MuMu Player. Não segue, não curte e não comenta: só olha perfis e envia posts.
+(uiautomator2) no MuMu Player. Não segue nem comenta: olha perfis e, no post que escolhe, curte,
+republica e envia no grupo.
 
 Faz parte do [quase-nada-bots-device](https://github.com/ViniciusMateos/quase-nada-bots-device):
-fica em `bots/garimpo/` e usa os bots `auto_follow` (folha de curtidas, trocar conta) e
-`brecho_scraper` (abrir perfil, grade, feed do perfil).
+fica em `bots/garimpo/` e usa os bots `auto_follow` (folha de curtidas, trocar conta),
+`brecho_scraper` (abrir perfil, grade, feed do perfil) e `like_repost` (modal e aviso do Republicar).
 
 ## Por que existe
 
@@ -33,7 +34,10 @@ famoso: perfil com mais de 100 mil seguidores tem público do mundo todo, não a
    (fixado velho é pulado), com pelo menos `min_curtidas` curtidas (padrão 5) e cuja lista de curtidas tem pelo menos
    `min_novos` pessoas (padrão 15) que a frota ainda **não** seguiu (todos os follows estão no
    `agente.log`). É o que evita post que rende 3 follows.
-5. Manda no grupo (`grupo`, padrão `vaitomanoquasenada`) pelo botão de enviar do post.
+5. **Curte e republica** o post (um toque em cada, conferido: os dois botões ligam e desligam; o
+   aviso do 1º repost fecha no "Fechar", nunca no "Anular") e manda no grupo (`grupo`, padrão
+   `vaitomanoquasenada`) pelo botão de enviar. A conta que republicou não vê as curtidas desse post
+   depois, no chat: no Auto Follow outra conta do lote faz ele.
 6. **Rodízio de perfis bons:** perfil que rendeu post e tem pelo menos 2 fotos de roupa na grade entra
    numa lista. O bot alterna perfil novo e perfil bom, volta nos bons pra pegar o post seguinte (nunca
    o mesmo post duas vezes, nunca dois seguidos do mesmo perfil, no máximo 2 do mesmo perfil por run).
