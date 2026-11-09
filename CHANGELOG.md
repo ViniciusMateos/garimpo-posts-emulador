@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0] — 2026-11-08
+
+### Adicionado
+- feat: o post escolhido também é curtido e republicado pela conta antes de ir pro grupo
+
+### Corrigido
+- fix: perfil privado escrito "Este perfil é privado" pula na hora (antes esperava ~40 s a grade)
+- fix: rodízio volta a cada 4 perfis novos sem envio — não fica preso esperando um novo dar certo
+- fix: "20,7 m" é 20,7 mil (o "m" minúsculo virava milhão e perfil comum caía como famoso)
+
+### Documentação
+- docs: README com o curtir e republicar
+
 ## [1.0.0] — 2026-11-07
 
 ### Adicionado
