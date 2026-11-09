@@ -54,6 +54,7 @@ PADRAO = {
     "bom_min_roupa": 2,            # fotos de roupa na grade pra virar perfil BOM (entra no rodízio)
     "bom_por_run": 2,              # posts de um mesmo perfil bom por run (não lotar o chat de 1 perfil)
     "bom_falhas": 2,               # perfil bom que falha isso seguido sai do rodízio
+    "novos_entre_bons": 4,         # perfis novos tentados sem envio antes de voltar pro rodízio
     "pausa": (2.0, 5.0),           # respiro entre perfis (atividade de gente)
 }
 
@@ -911,6 +912,7 @@ def processar_garimpo(d, log, conta, params=None, parar=None, rotulo=""):
     usados, ultimo = {}, None
     vez_do_bom = bool(est["bons"])     # começa pelo rodízio quando já tem perfil bom
     acabou_novo = False
+    novos_sem_envio = 0                # o rodízio é da FROTA: volta pra ele mesmo se os novos só falharem
 
     def _enviar(u, info, de_bom):
         nonlocal ultimo
@@ -984,6 +986,7 @@ def processar_garimpo(d, log, conta, params=None, parar=None, rotulo=""):
                     return res
                 if e == "ok":
                     vez_do_bom = not de_bom   # alterna: depois de um novo, um bom; depois de um bom, um novo
+                    novos_sem_envio = 0
                 _sleep(*cfg["pausa"])
                 continue
             res["descartados"] += 1
@@ -1000,6 +1003,9 @@ def processar_garimpo(d, log, conta, params=None, parar=None, rotulo=""):
                 vez_do_bom = False
             else:
                 est["perfis"][u] = dict({k: v for k, v in info.items() if k != "chave"}, ts=time.time(), r=r)
+                novos_sem_envio += 1
+                if novos_sem_envio >= max(1, cfg["novos_entre_bons"]):
+                    vez_do_bom, novos_sem_envio = True, 0
             _salvar(est)
             _sleep(*cfg["pausa"])
         if res["enviados"] >= meta:
