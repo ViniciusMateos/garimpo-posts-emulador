@@ -31,6 +31,7 @@ import urllib.request
 from bots.auto_follow import auto_follow as af
 from bots.auto_follow.auto_follow import _attr, _bounds, _dump, _log, _sleep, rid
 from bots.brecho_scraper import brecho_scraper as bs
+from bots.like_repost import like_repost as lr
 
 BASE = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 ESTADO_PATH = os.path.join(BASE, "garimpo_estado.json")
@@ -56,6 +57,7 @@ PADRAO = {
     "bom_falhas": 2,               # perfil bom que falha isso seguido sai do rodízio
     "novos_entre_bons": 4,         # perfis novos tentados sem envio antes de voltar pro rodízio
     "pausa": (2.0, 5.0),           # respiro entre perfis (atividade de gente)
+    "curtir_republicar": True,     # o post que vai pro grupo também é curtido e republicado pela conta
 }
 
 _RE_FOLLOW = re.compile(r"^\[..:..:..\]   \+ @(\S+)  \(\d+/\d+\)")
@@ -714,6 +716,68 @@ def envio_chegou(d, grupo, autor, log=None):
     return not any(f[1] > topo[1] for f in falhas)
 
 
+def _estado_acoes(d, conta):
+    """Botões do post em FOCO (o 1º de cima; o feed mostra o seguinte logo abaixo):
+    {like, curtido, repost, n_repost, republicado} ou None."""
+    try:
+        nos = list(lr._nos(_dump(d)))
+    except Exception:
+        return None
+    autores = [n for n in nos if n["rid"].endswith(":id/row_feed_photo_profile_name")]
+    if not autores:
+        return None
+    topo = min(autores, key=lambda n: n["bb"][1])
+    y0 = topo["bb"][1]
+    prox = [n["bb"][1] for n in autores if n["bb"][1] > y0]
+    y1 = min(prox) if prox else 10 ** 6
+    dentro = [n for n in nos if y0 <= n["bb"][1] < y1]
+    like = next((n for n in dentro if n["rid"].endswith(":id/row_feed_button_like")), None)
+    rep_ = next((n for n in dentro if n["desc"] == "Republicar"), None)
+    n_rep = None
+    if rep_ is not None:   # o número ao lado do ícone
+        lado = [n for n in dentro if n["txt"].isdigit() and n["bb"][0] >= rep_["bb"][2] - 4
+                and abs(n["bb"][1] - rep_["bb"][1]) < 20 and n["bb"][0] - rep_["bb"][2] < 30]
+        n_rep = int(lado[0]["txt"]) if lado else 0
+    eu = lr._norm(conta) + " partilhou"
+    return {"like": like["bb"] if like else None,
+            "curtido": bool(like) and like["desc"].strip().lower() == "gostei",
+            "repost": rep_["bb"] if rep_ else None, "n_repost": n_rep,
+            "republicado": any(lr._norm(n["desc"]).startswith(eu) for n in dentro)}
+
+
+def curtir_e_republicar(d, conta, log=None):
+    """Curte e republica o post em foco, UM toque cada (são toggle) e conferindo. Devolve
+    (curtida, repost) com 'ok' | 'já' | 'falha' | 'sem_botao'."""
+    st = _estado_acoes(d, conta)
+    if not st:
+        return "falha", "falha"
+    c = r = "sem_botao"
+    if st["like"] and st["curtido"]:
+        c = "já"
+    elif st["like"]:
+        _tocar_bb(d, st["like"])
+        _sleep(2.0, 3.0)
+        novo = _estado_acoes(d, conta)
+        c = "ok" if novo and novo["curtido"] else "falha"
+        st = novo or st
+    if st.get("republicado"):
+        r = "já"
+    elif st.get("repost"):
+        antes = st.get("n_repost")
+        _tocar_bb(d, st["repost"])
+        _sleep(2.0, 3.0)
+        r = "falha"
+        for _ in range(3):
+            lr._fechar_modal_repost(d)          # 1º repost da conta: "Fechar", NUNCA "Anular"
+            novo = _estado_acoes(d, conta)
+            if novo and (novo["republicado"] or (antes is not None and (novo.get("n_repost") or 0) > antes)):
+                r = "ok"
+                break
+            time.sleep(1.5)
+        lr._esperar_toast_sumir(d, 10)          # o "Republicaste… Anular" some sozinho; não toca nele
+    return c, r
+
+
 # ─────────────────────────────── perfis ───────────────────────────────
 def _parar(parar):
     if parar and parar():
@@ -916,6 +980,13 @@ def processar_garimpo(d, log, conta, params=None, parar=None, rotulo=""):
 
     def _enviar(u, info, de_bom):
         nonlocal ultimo
+        if cfg["curtir_republicar"]:
+            c, rp = curtir_e_republicar(d, conta, log)
+            info["curtiu"], info["republicou"] = c, rp
+            b = _bloqueio(d)
+            if b:
+                res["motivo"] = b
+                return "parar"
         e = enviar_no_grupo(d, cfg["grupo"], log)
         if e == "sem_grupo":
             res["motivo"] = "sem_grupo"
@@ -948,8 +1019,10 @@ def processar_garimpo(d, log, conta, params=None, parar=None, rotulo=""):
             est["bons"][u] = {"desde": agora, "ult": agora, "n": 1, "falhas": 0}
             _log(log, f"  * @{u} entrou no rodízio de perfis bons ({info.get('roupa')} fotos de roupa na grade)")
         _salvar(est)
+        extra = (f", curtir {info.get('curtiu')}, republicar {info.get('republicou')}"
+                 if cfg["curtir_republicar"] else "")
         _log(log, f"  + @{u}: enviado no grupo{' (rodízio)' if de_bom else ''} — {info.get('curtidas')} "
-                  f"curtidas, {info.get('novos')} novos na lista, roupa {info.get('roupa')}")
+                  f"curtidas, {info.get('novos')} novos na lista, roupa {info.get('roupa')}{extra}")
         _log(log, f"[progress] {res['enviados']} {meta} {rot}@{u}")
         return "ok"
 
@@ -991,7 +1064,7 @@ def processar_garimpo(d, log, conta, params=None, parar=None, rotulo=""):
                 continue
             res["descartados"] += 1
             det = ", ".join(f"{k} {v}" for k, v in info.items()
-                            if v is not None and k not in ("chave", "n_roupa", "autor_card"))
+                            if v is not None and k not in ("chave", "n_roupa", "autor_card", "curtiu", "republicou"))
             _log(log, f"  - @{u}: {r}" + (" (rodízio)" if de_bom else "") + (f" ({det})" if det else ""))
             if de_bom:
                 bom = est["bons"].get(u, {})
