@@ -61,6 +61,10 @@ _RE_FOLLOW = re.compile(r"^\[..:..:..\]   \+ @(\S+)  \(\d+/\d+\)")
 _RE_NUM = re.compile(r"(\d[\d.,\s]*)\s*(mil|k|m|mi|milhões|milhão)?", re.I)
 SEGUIDORES_KW = ("seguidores", "seguidor", "followers", "follower")
 NAO_CANDIDATOS = ("quasenada", "brechoquasenada")
+# privado escrito de outro jeito: "Este perfil é privado" (IG da segue35, 07/11) — o abrir_perfil do
+# scraper só conhecia "Esta conta é privada" e ficava ~40 s esperando a grade de cada privado
+_PRIVADO_EXTRA = ("este perfil é privado", "este perfil e privado", "this profile is private")
+bs.PERFIL_RUIM_TXT = tuple(dict.fromkeys(tuple(bs.PERFIL_RUIM_TXT) + _PRIVADO_EXTRA))
 
 
 class GarimpoParado(Exception):
