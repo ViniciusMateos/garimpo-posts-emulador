@@ -58,7 +58,7 @@ PADRAO = {
 }
 
 _RE_FOLLOW = re.compile(r"^\[..:..:..\]   \+ @(\S+)  \(\d+/\d+\)")
-_RE_NUM = re.compile(r"(\d[\d.,\s]*)\s*(mil|k|m|mi|milhões|milhão)?", re.I)
+_RE_NUM = re.compile(r"(\d[\d.,\s]*)\s*(milhões|milhão|mil|mi|k|m)?", re.I)
 SEGUIDORES_KW = ("seguidores", "seguidor", "followers", "follower")
 NAO_CANDIDATOS = ("quasenada", "brechoquasenada")
 # privado escrito de outro jeito: "Este perfil é privado" (IG da segue35, 07/11) — o abrir_perfil do
@@ -405,17 +405,20 @@ def chave_post(xml, autor):
 
 # ─────────────────────────────── leitura de tela ───────────────────────────────
 def _num_ig(txt):
-    """'2.345' → 2345 · '12,3 mil' → 12300 · '1,2 M' → 1200000 · '980' → 980. None se não tem número."""
+    """'2.345' → 2345 · '12,3 mil' / '20,7 m' / '5 k' → milhar · '1,2 M' / '1,2 mi' → milhão · '980' → 980.
+    O 'm' MINÚSCULO é milhar (IG destas contas: "27 mseguidores" = 27 mil); só o 'M' maiúsculo é milhão —
+    por isso NÃO baixar a caixa do texto antes de chamar. None se não tem número."""
     m = _RE_NUM.search(txt or "")
     if not m:
         return None
-    num, suf = m.group(1).strip(), (m.group(2) or "").lower()
+    num, suf = m.group(1).strip(), (m.group(2) or "")
     if suf:
         try:
-            v = float(num.replace(".", "").replace(" ", "").replace(",", "."))
+            v = float(re.sub(r"[.\s]", "", num).replace(",", "."))
         except ValueError:
             return None
-        return int(v * (1000 if suf in ("mil", "k") else 1000000))
+        milhao = suf == "M" or suf.lower() in ("mi", "milhões", "milhão")
+        return int(v * (1000000 if milhao else 1000))
     try:
         return int(re.sub(r"[.,\s]", "", num))
     except ValueError:
@@ -435,7 +438,8 @@ def ler_seguidores(xml):
         for s in (desc, txt):
             low = (s or "").lower()
             if any(k in low for k in SEGUIDORES_KW):
-                n = _num_ig(low.split("segui")[0].split("follow")[0])
+                corte = min(i for i in (low.find("segui"), low.find("follow"), len(low)) if i >= 0)
+                n = _num_ig((s or "")[:corte])          # caixa ORIGINAL: 'm' = mil, 'M' = milhão
                 if n is not None:
                     return n
                 # rótulo sozinho → o número é o nó logo acima, na mesma coluna
@@ -496,9 +500,10 @@ def ler_curtidas(xml):
             n = min(lado, key=lambda n: n["bb"][0])
             return _num_ig(n["txt"] or n["desc"]), n["bb"]
     for n in nos:
-        s = (n["txt"] or n["desc"] or "").lower()
+        bruto = n["txt"] or n["desc"] or ""
+        s = bruto.lower()
         if n["rid"].endswith(":id/" + af.LIKE_COUNT) or re.search(r"\d\s*(gostos|curtidas|likes)\b", s):
-            return _num_ig(s), n["bb"]
+            return _num_ig(bruto), n["bb"]
     return None, None
 
 
