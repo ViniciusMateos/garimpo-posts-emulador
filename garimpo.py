@@ -785,12 +785,18 @@ def _parar(parar):
 
 
 def _bloqueio(d):
+    """Bloqueio de VERDADE: tela de challenge, conta suspensa, verificação humana ou bloqueio de AÇÃO.
+    NÃO usa o af.tela_bloqueio: ele procura palavras soltas ("desativ", "revisar", "em análise") no
+    dump inteiro e a bio/legenda do perfil visitado disparava (09/11)."""
     try:
+        act = ((d.app_current() or {}).get("activity") or "").lower()
+        if "challenge" in act:
+            return "desafio"
         if af.conta_suspensa(d):
             return "suspensa"
         if af.desafio_humano(d):
             return "desafio_humano"
-        b = af.tela_bloqueio(d)
+        b = af._bloqueio(_dump(d))
         if b:
             return f"bloqueio:{b}"
     except Exception:
