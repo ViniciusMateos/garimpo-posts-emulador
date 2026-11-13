@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1] — 2026-11-13
+
+### Corrigido
+- fix: bloqueio só por tela de verdade (challenge, conta suspensa, verificação humana, bloqueio de ação) — palavra solta na bio do perfil visitado parava a conta com bloqueio falso
+
+### Modificado
+- update: sem pausa artificial entre perfis — a navegação no emulador já é a simulação
+
 ## [1.1.0] — 2026-11-08
 
 ### Adicionado
