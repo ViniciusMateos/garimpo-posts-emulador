@@ -56,7 +56,7 @@ PADRAO = {
     "bom_por_run": 2,              # posts de um mesmo perfil bom por run (não lotar o chat de 1 perfil)
     "bom_falhas": 2,               # perfil bom que falha isso seguido sai do rodízio
     "novos_entre_bons": 4,         # perfis novos tentados sem envio antes de voltar pro rodízio
-    "pausa": (2.0, 5.0),           # respiro entre perfis (atividade de gente)
+    "pausa": (0.0, 0.0),           # sem delay artificial (09/11): a navegação já é a simulação
     "curtir_republicar": True,     # o post que vai pro grupo também é curtido e republicado pela conta
 }
 
